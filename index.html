@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎂 寿星专属惊喜大转盘 🎁</title>
+<style>
+  :root{
+    --pink:#ff6b9d;
+    --purple:#a66bff;
+    --yellow:#ffd93b;
+    --blue:#6bc9ff;
+    --card-radius:26px;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{
+    margin:0; padding:0; min-height:100%;
+    font-family:'Comic Sans MS','Chalkboard SE','Baloo 2','Segoe Print','Microsoft YaHei',cursive,sans-serif;
+    color:#5b3a55;
+    overflow-x:hidden;
+    background:linear-gradient(135deg,#ffdee9,#c6f0ff,#fff5cc,#ffdee9);
+    background-size:400% 400%;
+    animation:bgshift 18s ease infinite;
+  }
+  @keyframes bgshift{
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+  }
+  #confetti-canvas{
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    pointer-events:none; z-index:999;
+  }
+  .floaters{ position:fixed; inset:0; overflow:hidden; z-index:0; pointer-events:none; }
+  .floaters span{
+    position:absolute; bottom:-60px; font-size:32px; opacity:0.85;
+    animation:floatUp linear infinite;
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,0.08));
+  }
+  @keyframes floatUp{
+    0%{ transform:translateY(0) rotate(0deg); opacity:0; }
+    10%{ opacity:0.9; }
+    90%{ opacity:0.9; }
+    100%{ transform:translateY(-110vh) rotate(360deg); opacity:0; }
+  }
+  .wrap{
+    position:relative; z-index:1;
+    max-width:480px; margin:0 auto; padding:22px 16px 60px;
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+  }
+  h1{
+    font-size:1.7rem; margin:10px 0 4px; line-height:1.4;
+    color:#e0498a; text-shadow:2px 2px 0 #fff, -1px -1px 0 #fff;
+  }
+  h1 .wiggle{ display:inline-block; animation:wiggle 1.6s ease-in-out infinite; }
+  @keyframes wiggle{
+    0%,100%{ transform:rotate(-8deg); }
+    50%{ transform:rotate(8deg); }
+  }
+  .subtitle{
+    font-size:0.95rem; color:#8a5a86; margin:0 0 14px; line-height:1.6;
+    background:rgba(255,255,255,0.55); padding:10px 14px; border-radius:16px;
+    border:2px dashed #ffb6d5;
+  }
+  .name-editor{
+    display:flex; align-items:center; gap:6px; font-size:0.95rem; margin-bottom:18px;
+    background:#fff; padding:8px 16px; border-radius:20px; box-shadow:0 4px 0 #ffd1e8;
+  }
+  .name-editor b{ color:#e0498a; }
+  .wheel-wrap{
+    position:relative; width:280px; height:280px; margin:8px 0 22px;
+  }
+  .pointer{
+    position:absolute; top:-14px; left:50%; transform:translateX(-50%);
+    font-size:38px; z-index:5; filter:drop-shadow(0 3px 3px rgba(0,0,0,0.25));
+    animation:pointerBounce 1s ease-in-out infinite;
+  }
+  @keyframes pointerBounce{
+    0%,100%{ transform:translateX(-50%) translateY(0); }
+    50%{ transform:translateX(-50%) translateY(4px); }
+  }
+  .wheel-outer{
+    width:100%; height:100%; border-radius:50%;
+    padding:10px; background:linear-gradient(145deg,#fff0f6,#ffe0ef);
+    box-shadow:0 10px 25px rgba(180,80,140,0.35), inset 0 0 0 6px #fff;
+  }
+  .wheel{
+    position:relative; width:100%; height:100%; border-radius:50%;
+    box-shadow:0 0 0 4px #fff, 0 0 0 8px #ffb6d5;
+    transform:rotate(0deg);
+  }
+  .wheel-label{
+    position:absolute; top:50%; left:50%; width:0; height:0;
+  }
+  .wheel-label span{
+    display:inline-block; transform-origin:center;
+    font-size:22px; line-height:1; white-space:nowrap;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,0.15));
+  }
+  .wheel-slice-line{
+    position:absolute; top:50%; left:50%; width:50%; height:2px;
+    background:rgba(255,255,255,0.55); transform-origin:0 50%;
+  }
+  .wheel-center{
+    position:absolute; top:50%; left:50%; width:46px; height:46px;
+    transform:translate(-50%,-50%); border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff, #ffd1e8);
+    box-shadow:0 0 0 4px #fff, 0 3px 6px rgba(0,0,0,0.2);
+    display:flex; align-items:center; justify-content:center; font-size:20px; z-index:3;
+  }
+  .draw-btn{
+    font-family:inherit; font-size:1.15rem; font-weight:bold; color:#fff;
+    background:linear-gradient(135deg,#ff8fb8,#a66bff);
+    border:none; padding:14px 38px; border-radius:50px; cursor:pointer;
+    box-shadow:0 6px 0 #c14e8c, 0 10px 18px rgba(200,80,150,0.35);
+    transition:transform 0.12s ease;
+    letter-spacing:1px;
+  }
+  .draw-btn:active{ transform:translateY(4px); box-shadow:0 2px 0 #c14e8c; }
+  .draw-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+  .view-btn{
+    margin-top:12px; font-family:inherit; font-size:0.92rem; font-weight:bold; color:#a66bff;
+    background:#fff; border:2px solid #a66bff; padding:9px 24px; border-radius:50px; cursor:pointer;
+    box-shadow:0 4px 0 #d8c4ff; transition:transform 0.12s ease;
+  }
+  .view-btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #d8c4ff; }
+  .draw-count{
+    margin-top:12px; font-size:0.82rem; color:#a06a99;
+  }
+  .hint{ font-size:0.78rem; color:#b98cb0; margin-top:4px; }
+  .footnote{
+    margin-top:30px; font-size:0.72rem; color:#a98aa5; line-height:1.6;
+    max-width:380px;
+  }
+  .reset-link{
+    position:fixed; top:10px; right:12px; z-index:200;
+    font-size:0.68rem; color:#c9a6c4; text-decoration:underline;
+    cursor:pointer; background:none; border:none; font-family:inherit;
+    opacity:0.03; transition:opacity 0.2s ease; padding:6px 8px;
+  }
+  .reset-link:hover, .reset-link:focus{ opacity:1; }
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(90,40,70,0.45);
+    display:flex; align-items:center; justify-content:center; z-index:100;
+    opacity:0; pointer-events:none; transition:opacity 0.25s ease;
+    padding:18px;
+  }
+  .modal-overlay.show{ opacity:1; pointer-events:auto; }
+  .coupon-card{
+    position:relative; width:100%; max-width:340px; background:#fffaf3;
+    border-radius:var(--card-radius); padding:26px 22px 22px;
+    box-shadow:0 20px 40px rgba(0,0,0,0.25);
+    transform:scale(0.6) translateY(40px); opacity:0;
+    transition:transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.3s ease;
+    text-align:center;
+    background-image:
+      radial-gradient(circle at 8px 50%, transparent 8px, #fffaf3 9px),
+      radial-gradient(circle at calc(100% - 8px) 50%, transparent 8px, #fffaf3 9px);
+    background-position:left center, right center;
+    background-repeat:no-repeat;
+  }
+  .modal-overlay.show .coupon-card{ transform:scale(1) translateY(0); opacity:1; }
+  .coupon-card::before{
+    content:''; position:absolute; left:14px; right:14px; top:118px;
+    border-top:2px dashed #ffcfe3; height:0;
+  }
+  .prize-emoji{
+    font-size:56px; margin-bottom:2px; animation:popIn 0.5s ease;
+  }
+  @keyframes popIn{
+    0%{ transform:scale(0) rotate(-30deg); }
+    70%{ transform:scale(1.2) rotate(8deg); }
+    100%{ transform:scale(1) rotate(0deg); }
+  }
+  .prize-title{
+    font-size:1.35rem; color:#e0498a; margin:2px 0 10px; font-weight:bold;
+  }
+  .prize-desc{
+    font-size:0.88rem; color:#7a5476; line-height:1.6; margin-bottom:16px;
+  }
+  .coupon-code-box{
+    margin:16px 0 10px; font-size:0.85rem; color:#8a5a86;
+    background:#fff0f6; border-radius:10px; padding:8px 10px;
+    letter-spacing:1px; word-break:break-all;
+  }
+  .coupon-code-box b{ color:#a66bff; font-size:0.95rem; }
+  .coupon-terms{
+    font-size:0.68rem; color:#b598b0; line-height:1.5; margin-top:10px;
+  }
+  .close-modal-btn{
+    margin-top:16px; font-family:inherit; font-size:1rem; font-weight:bold; color:#fff;
+    background:linear-gradient(135deg,#ffb6d5,#ff8fb8);
+    border:none; padding:10px 30px; border-radius:50px; cursor:pointer;
+    box-shadow:0 5px 0 #d76a9e;
+  }
+  .close-modal-btn:active{ transform:translateY(3px); box-shadow:0 2px 0 #d76a9e; }
+  .stamp{
+    position:absolute; top:16px; right:18px; font-size:0.68rem; font-weight:bold;
+    color:#ff6b9d; border:2px solid #ff6b9d; border-radius:50%;
+    width:52px; height:52px; display:flex; align-items:center; justify-content:center;
+    transform:rotate(18deg); opacity:0.75; line-height:1.1; text-align:center;
+  }
+  .bonus-banner{
+    display:none; background:linear-gradient(135deg,#fff3b0,#ffd166);
+    color:#8a5a00; font-size:0.78rem; font-weight:bold; line-height:1.6;
+    border-radius:12px; padding:8px 10px; margin:-4px 0 14px;
+    border:2px dashed #e0a400;
+  }
+  .bonus-banner.show{ display:block; }
+  .coupon-card.empty-mode::before{ display:none; }
+  .coupon-card.empty-mode .stamp{ display:none; }
+  .empty-state{ padding:6px 0 4px; }
+  .empty-state .empty-emoji{ font-size:52px; margin-bottom:6px; }
+  @media (max-width:360px){
+    .wheel-wrap{ width:250px; height:250px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+<div class="floaters" id="floaters"></div>
+
+<div class="wrap">
+  <h1><span class="wiggle">🎂</span> 生日快乐鸭 <span class="wiggle">🎉</span></h1>
+  <p class="subtitle">
+    人在远方，祝福不能缺席～蛋糕送不到，那就先送你一个<b>超走心的抽奖机会</b>！
+  </p>
+
+  <div class="name-editor">
+    致 🎈 <b>可爱的小朱朱</b>
+  </div>
+
+  <div class="wheel-wrap">
+    <div class="pointer">🔻</div>
+    <div class="wheel-outer">
+      <div class="wheel" id="wheel">
+        <div class="wheel-center">🎁</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="draw-btn" id="drawBtn">🎰 点我抽奖 🎰</button>
+  <button class="view-btn" id="viewBtn">🎫 查看我的奖品卡</button>
+  <div class="hint">✨ 神秘大转盘，抽到才知道是什么～</div>
+
+  <p class="footnote">
+    *本转盘由寿星哥/姐姐纯手工代码打造，凝聚了 100% 的心意与 30% 的debug血泪。<br>
+    *最终解释权归送礼人所有，反正怎么解释都是为了让你开心 💗
+  </p>
+  <button class="reset-link" id="resetLink">（测试用）重置抽奖记录</button>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="coupon-card" id="couponCard">
+    <div class="stamp">已盖章<br>生效</div>
+
+    <div id="prizeContent">
+      <div class="bonus-banner" id="bonusBanner">
+        哎呦喂～抽到什么就是什么啦，再抽也是无效的哦！
+      </div>
+      <div class="prize-emoji" id="prizeEmoji">🎁</div>
+      <div class="prize-title" id="prizeTitle">奖品名称</div>
+      <div class="prize-desc" id="prizeDesc">奖品描述</div>
+      <div class="coupon-code-box">
+        兑换码：<b id="couponCode">BDAY-000000</b><br>
+        发放时间：<span id="couponTime"></span>
+      </div>
+      <p class="coupon-terms">
+        * 凭此卡截图联系送礼人本人兑换，仅限购买 iPad 11 Pro 时使用<br>
+        * 不可兑换现金、不可转让、不可用于威胁送礼人多买礼物<br>
+        * 有效期至送礼人破产 / 后悔 / 寿星忘记为止（以先到者为准）
+      </p>
+    </div>
+
+    <div id="emptyState" class="empty-state" style="display:none;">
+      <div class="empty-emoji">🥺</div>
+      <div class="prize-title">还没有抽奖记录哦～</div>
+      <p class="prize-desc">快去点一下上面的"点我抽奖"，抽到的第一份惊喜会被悄悄保存在这里，之后随时都能回来查看哦～</p>
+    </div>
+
+    <button class="close-modal-btn" id="closeModalBtn">开心收下 💖</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- 奖品配置（概率从大到小） ----------
+  var prizes = [
+    { name:"立减50%优惠券", weight:40, emoji:"🏷️",
+      desc:"手气不错～iPad 11 Pro 立减50%，直接砍掉一半价格！" },
+    { name:"立减60%优惠券", weight:30, emoji:"🎫",
+      desc:"哇！运气加成！iPad 11 Pro 立减60%，比购物节还猛！" },
+    { name:"立减90%优惠券", weight:15, emoji:"👑",
+      desc:"！！！欧皇附体！！！iPad 11 Pro 立减90%，几乎白送！送礼人已哭晕在厕所 😭💸" },
+    { name:"一杯奶茶", weight:10, emoji:"🧋",
+      desc:"这次手气……有待提升。不过没关系，一杯奶茶的爱依然是爱！" },
+    { name:"倒贴你哥一部iPad", weight:5, emoji:"🤡", isJoke:true,
+      desc:"叮！史诗级隐藏彩蛋——倒贴一部iPad！（纯属搞笑，别当真，我还没那么大方哈哈）不过手气这么“惊人”，特别奖励你：抽奖次数已重置，可以马上再抽一次真正的奖品啦！" }
+  ];
+
+  // ---------- 工具函数 ----------
+  function $(id){ return document.getElementById(id); }
+  function rand(min,max){ return Math.random()*(max-min)+min; }
+  function pad2(n){ return n<10 ? "0"+n : ""+n; }
+
+  function genCode(){
+    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    var s = "";
+    for(var i=0;i<6;i++){ s += chars[Math.floor(Math.random()*chars.length)]; }
+    return "BDAY-" + s;
+  }
+
+  function weightedPick(){
+    var total = 0;
+    for(var i=0;i<prizes.length;i++){ total += prizes[i].weight; }
+    var r = Math.random()*total;
+    var acc = 0;
+    for(var i=0;i<prizes.length;i++){
+      acc += prizes[i].weight;
+      if(r <= acc) return i;
+    }
+    return prizes.length-1;
+  }
+
+  // ---------- localStorage 状态（小小防作弊） ----------
+  // officialIdx：第一次抽到的“真命奖品”，永久有效
+  // officialCode / officialTime：真命奖品对应的兑换码与发放时间，保持一致不会变
+  // totalDraws：累计点击次数（不在页面上展示，仅用于内部判断阶段）
+  var STORE_KEY = "bdayWheelState_v3";
+  var LOCK_ROUNDS = 10; // 真命奖品之后，再"障眼法"式重复展示的次数
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return { officialIdx:-1, officialCode:"", officialTime:"", totalDraws:0 };
+  }
+  function saveState(s){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }catch(e){}
+  }
+  var state = loadState();
+
+  var BDAY_NAME = "小朱朱";
+
+  $("resetLink").addEventListener("click", function(){
+    state = { officialIdx:-1, officialCode:"", officialTime:"", totalDraws:0 };
+    saveState(state);
+    var btn = $("resetLink");
+    var old = btn.textContent;
+    btn.textContent = "✅ 已重置！寿星的第一抽依然是随机的～";
+    setTimeout(function(){ btn.textContent = old; }, 2200);
+  });
+
+  // ---------- 构建转盘扇区（神秘款：等份切割，不暴露具体奖项与概率） ----------
+  var wheelEl = $("wheel");
+  var sliceCount = prizes.length;
+  var sliceColors = ["#ff6b9d","#ffa36b","#a66bff","#c68b59","#ff4757"];
+  var mysteryIcons = ["❓","✨","🌟","🔮","🎃"];
+
+  var gradientParts = [];
+  var sectors = []; // {startDeg, endDeg, midDeg}，各扇区角度完全相等，与真实中奖概率无关
+  for(var i=0;i<sliceCount;i++){
+    var startPct = i / sliceCount * 100;
+    var endPct = (i+1) / sliceCount * 100;
+    gradientParts.push(sliceColors[i % sliceColors.length] + " " + startPct.toFixed(3) + "% " + endPct.toFixed(3) + "%");
+    sectors.push({
+      startDeg: startPct/100*360,
+      endDeg: endPct/100*360
+    });
+  }
+  wheelEl.style.background = "conic-gradient(from 0deg, " + gradientParts.join(", ") + ")";
+
+  // 放置神秘图标（所有扇区看起来"待解锁"，抽中前完全不知道对应什么奖项）
+  function placeLabels(radius){
+    var olds = wheelEl.querySelectorAll(".wheel-label, .wheel-slice-line");
+    olds.forEach(function(el){ el.remove(); });
+    for(var i=0;i<sliceCount;i++){
+      var mid = (sectors[i].startDeg + sectors[i].endDeg) / 2;
+
+      var line = document.createElement("div");
+      line.className = "wheel-slice-line";
+      line.style.transform = "rotate(" + sectors[i].startDeg + "deg)";
+      wheelEl.appendChild(line);
+
+      var label = document.createElement("div");
+      label.className = "wheel-label";
+      label.style.transform = "rotate(" + mid + "deg) translateY(-" + radius + "px)";
+      var span = document.createElement("span");
+      span.style.transform = "rotate(" + (-mid) + "deg)";
+      span.textContent = mysteryIcons[i % mysteryIcons.length];
+      label.appendChild(span);
+      wheelEl.appendChild(label);
+      sectors[i].midDeg = mid;
+    }
+  }
+  function currentWheelRadius(){
+    var wrapEl = document.querySelector(".wheel-wrap");
+    return wrapEl.offsetWidth * (100/280); // 按比例缩放标签半径
+  }
+  placeLabels(currentWheelRadius());
+  window.addEventListener("resize", function(){ placeLabels(currentWheelRadius()); });
+
+  // ---------- 转盘旋转逻辑 ----------
+  var currentRotation = 0;
+  var spinning = false;
+
+  function spinTo(idx, callback){
+    var sector = sectors[idx];
+    var sectorSpan = sector.endDeg - sector.startDeg;
+    var buffer = Math.min(sectorSpan * 0.3, 4);
+    var jitter = rand(-(sectorSpan/2 - buffer), (sectorSpan/2 - buffer));
+    var targetMid = sector.midDeg + (isFinite(jitter) ? jitter : 0);
+
+    var currentMod = currentRotation % 360;
+    var desiredMod = (360 - targetMid) % 360;
+    var diff = (desiredMod - currentMod + 360) % 360;
+    var extraSpins = 4 + Math.floor(Math.random()*3);
+    var newRotation = currentRotation + 360*extraSpins + diff;
+
+    wheelEl.style.transition = "transform 3.6s cubic-bezier(0.12,0.72,0.18,1)";
+    wheelEl.style.transform = "rotate(" + newRotation + "deg)";
+    currentRotation = newRotation;
+
+    setTimeout(callback, 3700);
+  }
+
+  // ---------- 抽奖按钮 ----------
+  var drawBtn = $("drawBtn");
+  drawBtn.addEventListener("click", function(){
+    if(spinning) return;
+    spinning = true;
+    drawBtn.disabled = true;
+
+    var n = state.totalDraws; // 本次点击之前，已经抽过的次数
+    var idx;
+    var isBonusRound = false;
+    var forcedCode = null, forcedTime = null;
+    var isFirstDraw = (n === 0);
+
+    if(n === 0){
+      // 第一抽：真随机，决定"真命奖品"，永久生效
+      idx = weightedPick();
+      state.officialIdx = idx;
+    } else if(n < LOCK_ROUNDS){
+      // 第 2~10 抽：障眼法，重复展示真命奖品（连兑换码都一致），营造"好像每次都随机"的假象
+      idx = state.officialIdx;
+      forcedCode = state.officialCode;
+      forcedTime = state.officialTime;
+    } else {
+      // 第 11 抽起：真的随机抽给你看看手气，但通通不作数～
+      idx = weightedPick();
+      isBonusRound = true;
+    }
+
+    var isJoke = !!prizes[idx].isJoke;
+    if(isJoke){
+      // 搞怪彩蛋：无论出现在哪个阶段，都直接重置抽奖记录，送一次全新的真实机会
+      state.officialIdx = -1;
+      state.officialCode = "";
+      state.officialTime = "";
+      state.totalDraws = 0;
+      isBonusRound = false;
+      isFirstDraw = false;
+    } else {
+      state.totalDraws += 1;
+    }
+    saveState(state);
+
+    spinTo(idx, function(){
+      spinning = false;
+      drawBtn.disabled = false;
+      var result = renderPrizeCard(idx, isBonusRound, forcedCode, forcedTime);
+      if(isFirstDraw && !isJoke){
+        // 保存这次真命奖品的兑换码和时间，之后"查看奖品卡"都用同一份
+        state.officialCode = result.code;
+        state.officialTime = result.timeStr;
+        saveState(state);
+      }
+    });
+  });
+
+  // ---------- 结果弹窗 ----------
+  var modalOverlay = $("modalOverlay");
+  var bonusBanner = $("bonusBanner");
+  var prizeContentEl = $("prizeContent");
+  var emptyStateEl = $("emptyState");
+  var couponCardEl = $("couponCard");
+  var closeModalBtn = $("closeModalBtn");
+
+  function renderPrizeCard(idx, isBonusRound, forcedCode, forcedTime){
+    var p = prizes[idx];
+    couponCardEl.classList.remove("empty-mode");
+    prizeContentEl.style.display = "";
+    emptyStateEl.style.display = "none";
+    closeModalBtn.textContent = "开心收下 💖";
+
+    $("prizeEmoji").textContent = p.emoji;
+    $("prizeTitle").textContent = "🎉 恭喜抽中：" + p.name + " 🎉";
+    $("prizeDesc").textContent = BDAY_NAME + "，" + p.desc;
+
+    var code = forcedCode || genCode();
+    var timeStr = forcedTime;
+    if(!timeStr){
+      var now = new Date();
+      timeStr = now.getFullYear() + "-" + pad2(now.getMonth()+1) + "-" + pad2(now.getDate()) +
+        " " + pad2(now.getHours()) + ":" + pad2(now.getMinutes());
+    }
+    $("couponCode").textContent = code;
+    $("couponTime").textContent = timeStr;
+    bonusBanner.classList.toggle("show", !!isBonusRound);
+
+    modalOverlay.classList.add("show");
+    burstConfetti(idx);
+    try{ playChime(); }catch(e){}
+    return { code: code, timeStr: timeStr };
+  }
+
+  // "查看我的奖品卡"：随时静静地回顾第一次抽到的真命奖品，不产生新抽奖、不触发彩带音效
+  var viewBtn = $("viewBtn");
+  viewBtn.addEventListener("click", function(){
+    if(state.officialIdx < 0 || !prizes[state.officialIdx]){
+      couponCardEl.classList.add("empty-mode");
+      prizeContentEl.style.display = "none";
+      emptyStateEl.style.display = "";
+      closeModalBtn.textContent = "好嘛，这就去抽 🎡";
+      modalOverlay.classList.add("show");
+      return;
+    }
+    var p = prizes[state.officialIdx];
+    couponCardEl.classList.remove("empty-mode");
+    prizeContentEl.style.display = "";
+    emptyStateEl.style.display = "none";
+    closeModalBtn.textContent = "开心收下 💖";
+
+    $("prizeEmoji").textContent = p.emoji;
+    $("prizeTitle").textContent = "🎉 你的专属奖品：" + p.name + " 🎉";
+    $("prizeDesc").textContent = BDAY_NAME + "，" + p.desc;
+    $("couponCode").textContent = state.officialCode || genCode();
+    $("couponTime").textContent = state.officialTime || "";
+    bonusBanner.classList.remove("show");
+
+    modalOverlay.classList.add("show");
+  });
+
+  $("closeModalBtn").addEventListener("click", function(){
+    modalOverlay.classList.remove("show");
+  });
+  modalOverlay.addEventListener("click", function(e){
+    if(e.target === modalOverlay) modalOverlay.classList.remove("show");
+  });
+
+  // ---------- 背景漂浮表情 ----------
+  var floaterEmojis = ["🎈","🎂","✨","🎁","🧁","🍰","⭐"];
+  var floatersEl = $("floaters");
+  for(var i=0;i<14;i++){
+    var s = document.createElement("span");
+    s.textContent = floaterEmojis[Math.floor(Math.random()*floaterEmojis.length)];
+    s.style.left = rand(0,100) + "%";
+    s.style.fontSize = rand(20,40) + "px";
+    s.style.animationDuration = rand(9,18) + "s";
+    s.style.animationDelay = rand(0,14) + "s";
+    floatersEl.appendChild(s);
+  }
+
+  // ---------- 彩带特效 ----------
+  var canvas = $("confetti-canvas");
+  var ctx = canvas.getContext("2d");
+  function resizeCanvas(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+
+  var particles = [];
+  var confettiColors = ["#ff6b9d","#a66bff","#ffd93b","#6bcb77","#6bc9ff","#ffa36b"];
+  function burstConfetti(idx){
+    // 0=立减50% 1=立减60% 2=立减90% 3=奶茶 4=倒贴iPad（搞怪彩蛋，特意多给点热闹）
+    var count = idx === 2 ? 160 : (idx === 4 ? 220 : (idx === 3 ? 60 : 110));
+    for(var i=0;i<count;i++){
+      particles.push({
+        x: rand(0, canvas.width),
+        y: rand(-40, -10),
+        vx: rand(-2.2,2.2),
+        vy: rand(2,5.5),
+        size: rand(6,11),
+        color: confettiColors[Math.floor(Math.random()*confettiColors.length)],
+        rot: rand(0,360),
+        vr: rand(-8,8),
+        life: rand(90,150)
+      });
+    }
+    if(!animating){ animating = true; animateConfetti(); }
+  }
+  var animating = false;
+  function animateConfetti(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    var alive = false;
+    for(var i=particles.length-1;i>=0;i--){
+      var pt = particles[i];
+      pt.x += pt.vx;
+      pt.y += pt.vy;
+      pt.vy += 0.05;
+      pt.rot += pt.vr;
+      pt.life -= 1;
+      if(pt.life <= 0 || pt.y > canvas.height + 30){
+        particles.splice(i,1);
+        continue;
+      }
+      alive = true;
+      ctx.save();
+      ctx.translate(pt.x, pt.y);
+      ctx.rotate(pt.rot * Math.PI/180);
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(-pt.size/2, -pt.size/4, pt.size, pt.size/2);
+      ctx.restore();
+    }
+    if(alive){
+      requestAnimationFrame(animateConfetti);
+    } else {
+      animating = false;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+  }
+
+  // ---------- 简单音效（Web Audio 合成，无需外部文件） ----------
+  var audioCtx = null;
+  function playChime(){
+    if(!window.AudioContext && !window.webkitAudioContext) return;
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    var freqs = [523.25, 659.25, 783.99, 1046.5];
+    var t0 = audioCtx.currentTime;
+    freqs.forEach(function(f, i){
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = f;
+      gain.gain.value = 0.0001;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      var start = t0 + i*0.09;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.16, start + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    });
+  }
+
+})();
+</script>
+</body>
+</html>
